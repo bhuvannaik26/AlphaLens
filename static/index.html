@@ -1,0 +1,904 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AlphaLens — Explainable Market Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#050a0e; --surface:#0b1219; --surface2:#101c27; --border:#1a2d3d;
+  --accent:#00e5ff; --accent2:#00ff88; --warn:#ffb300; --danger:#ff4444;
+  --text:#c8dce8; --muted:#4a6a80; --card:#0d1821;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,255,0.012) 2px,rgba(0,229,255,0.012) 4px);pointer-events:none;z-index:9999;}
+
+/* ── HEADER ── */
+header{border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-mark{width:34px;height:34px;border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:13px;color:var(--accent);clip-path:polygon(10% 0%,90% 0%,100% 10%,100% 90%,90% 100%,10% 100%,0% 90%,0% 10%);}
+.logo-text{font-size:21px;font-weight:800;letter-spacing:-.5px;}
+.logo-text span{color:var(--accent);}
+.logo-sub{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;}
+.header-right{display:flex;align-items:center;gap:16px;}
+.live-badge{display:flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:11px;color:var(--accent2);letter-spacing:1px;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent2);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.src-badge{font-family:'Space Mono',monospace;font-size:10px;padding:3px 10px;border:1px solid var(--border);border-radius:2px;color:var(--muted);letter-spacing:1px;}
+.src-badge.live{border-color:var(--accent2);color:var(--accent2);}
+.src-badge.sim{border-color:var(--warn);color:var(--warn);}
+
+/* ── TICKER BAR ── */
+.ticker-bar{background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.ticker-label{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;white-space:nowrap;}
+.ticker-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{padding:5px 13px;border:1px solid var(--border);border-radius:2px;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;transition:all .2s;color:var(--muted);background:transparent;}
+.chip:hover,.chip.active{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.06);}
+.analyze-btn{margin-left:auto;padding:8px 22px;background:var(--accent);color:var(--bg);border:none;border-radius:2px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:all .2s;white-space:nowrap;}
+.analyze-btn:hover{background:#33eeff;transform:translateY(-1px);}
+.analyze-btn:disabled{background:var(--muted);cursor:not-allowed;transform:none;}
+
+/* ── LAYOUT ── */
+main{display:grid;grid-template-columns:1fr 360px;min-height:calc(100vh - 112px);}
+.section-label{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.left-panel{border-right:1px solid var(--border);display:flex;flex-direction:column;}
+.right-panel{display:flex;flex-direction:column;height:calc(100vh - 112px);overflow:hidden;}
+
+/* ── CHART AREA ── */
+.chart-area{padding:22px 26px;border-bottom:1px solid var(--border);}
+.stock-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;}
+.stock-name{font-size:26px;font-weight:800;letter-spacing:-1px;}
+.stock-sector{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px;}
+.stock-price{text-align:right;}
+.price-val{font-size:24px;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace;}
+.price-chg{font-size:12px;font-family:'Space Mono',monospace;margin-top:2px;}
+.price-chg.up{color:var(--accent2);}
+.price-chg.down{color:var(--danger);}
+.chart-container{height:210px;position:relative;}
+.volume-container{height:65px;margin-top:6px;}
+.stats-row{display:flex;border-top:1px solid var(--border);}
+.stat-item{flex:1;padding:12px 16px;border-right:1px solid var(--border);}
+.stat-item:last-child{border-right:none;}
+.stat-k{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;}
+.stat-v{font-size:15px;font-weight:700;margin-top:4px;font-family:'Space Mono',monospace;}
+.stat-v.up-color{color:var(--accent2);}
+.stat-v.down-color{color:var(--danger);}
+.stat-v.accent{color:var(--accent);}
+
+/* ── OPPORTUNITY RADAR ── */
+.radar-area{padding:20px 26px;flex:1;}
+.opp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.opp-card{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:12px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.opp-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;transform:scaleX(0);transition:transform .2s;transform-origin:left;}
+.opp-card:hover::before{transform:scaleX(1);}
+.opp-card:hover{border-color:var(--accent);background:rgba(0,229,255,.04);}
+.opp-ticker{font-weight:700;font-size:14px;}
+.opp-signal{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;margin:3px 0;}
+.opp-conf-bar{height:3px;background:var(--border);border-radius:2px;margin:7px 0 4px;}
+.opp-conf-fill{height:100%;border-radius:2px;transition:width 1s ease;}
+.opp-meta{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:9px;}
+
+/* ── NEWS ── */
+.news-strip{border-top:1px solid var(--border);padding:14px 26px;background:var(--surface);display:flex;gap:20px;overflow-x:auto;flex-shrink:0;}
+.news-strip::-webkit-scrollbar{height:3px;}
+.news-strip::-webkit-scrollbar-thumb{background:var(--border);}
+.news-item{flex-shrink:0;max-width:240px;border-left:2px solid var(--border);padding-left:10px;cursor:pointer;transition:border-color .2s;}
+.news-item:hover{border-color:var(--accent);}
+.news-title{font-size:11px;line-height:1.4;margin-bottom:3px;}
+.news-src{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);}
+
+/* ── EXPLAIN PANEL ── */
+.explain-panel{padding:18px 18px;border-bottom:1px solid var(--border);overflow-y:auto;flex:1;min-height:0;}
+.explain-panel::-webkit-scrollbar{width:3px;}
+.explain-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+/* Signal badge */
+.signal-badge{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border:1px solid var(--accent);font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:14px;clip-path:polygon(6px 0%,100% 0%,100% calc(100% - 6px),calc(100% - 6px) 100%,0% 100%,0% 6px);}
+
+/* Confidence dial */
+.conf-dial{text-align:center;margin:14px 0 10px;}
+.conf-arc{position:relative;width:110px;height:60px;margin:0 auto 8px;}
+.conf-arc canvas{position:absolute;top:0;left:0;}
+.conf-num{font-size:36px;font-weight:800;font-family:'Space Mono',monospace;line-height:1;margin-top:4px;}
+.conf-label{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;margin-top:3px;}
+.conf-bar-wrap{height:5px;background:var(--border);border-radius:3px;margin:10px 0 6px;}
+.conf-bar-fill{height:100%;border-radius:3px;transition:width 1.2s ease;}
+
+/* Hist stats */
+.hist-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;}
+.hist-stat{background:var(--surface);border:1px solid var(--border);padding:8px 6px;border-radius:3px;text-align:center;}
+.hist-stat-v{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;}
+.hist-stat-k{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.5px;margin-top:2px;}
+
+/* Explain blocks */
+.explain-block{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:12px;margin-bottom:10px;font-size:12px;line-height:1.6;}
+.explain-block-title{font-family:'Space Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:2px;margin-bottom:7px;}
+.indicator-list{list-style:none;}
+.indicator-list li{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid rgba(26,45,61,.5);font-size:11px;line-height:1.5;}
+.indicator-list li:last-child{border-bottom:none;}
+.ind-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:5px;flex-shrink:0;}
+.ind-dot.warn{background:var(--warn);}
+.ind-dot.danger{background:var(--danger);}
+
+/* Signal pills */
+.sig-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:2px;font-family:'Space Mono',monospace;font-size:9px;margin:3px 3px 0 0;border:1px solid;}
+.sig-pill.bull{border-color:rgba(0,255,136,.3);color:var(--accent2);background:rgba(0,255,136,.06);}
+.sig-pill.bear{border-color:rgba(255,68,68,.3);color:var(--danger);background:rgba(255,68,68,.06);}
+.sig-pill.neutral{border-color:var(--border);color:var(--muted);}
+
+/* LLM block */
+.llm-block{background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.2);border-radius:4px;padding:12px;margin-bottom:10px;}
+.llm-typing{display:inline-block;}
+.llm-typing::after{content:'▊';animation:blink .8s step-end infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+
+/* ATR bar */
+.atr-bar-wrap{height:4px;background:var(--border);border-radius:2px;margin-top:5px;}
+.atr-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent2),var(--warn));transition:width 1s ease;}
+
+/* ── CHAT PANEL ── */
+.chat-panel{padding:0;display:flex;flex-direction:column;flex-shrink:0;height:400px;border-top:1px solid var(--border);}
+.chat-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.chat-header-title{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--muted);}
+.chat-status{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+.chat-status-dot{width:5px;height:5px;border-radius:50%;background:var(--accent2);}
+.chat-ctx-bar{padding:6px 14px;background:rgba(0,229,255,.05);border-bottom:1px solid var(--border);font-family:'Space Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:1px;flex-shrink:0;display:none;}
+.chat-ctx-bar.visible{display:block;}
+.chat-messages{flex:1;overflow-y:auto;padding:12px 14px;scroll-behavior:smooth;min-height:0;}
+.chat-messages::-webkit-scrollbar{width:2px;}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.msg{margin-bottom:10px;animation:fadeUp .25s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.msg-user{text-align:right;}
+.msg-user .bubble{display:inline-block;background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.25);padding:7px 11px;border-radius:2px 8px 8px 2px;font-size:12px;max-width:88%;text-align:left;}
+.msg-ai .bubble{background:var(--surface2);border:1px solid var(--border);padding:9px 11px;border-radius:8px 8px 8px 2px;font-size:12px;line-height:1.65;max-width:96%;white-space:pre-wrap;}
+.msg-ai .bubble.thinking{opacity:.6;font-style:italic;}
+.msg-label{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:1px;margin-bottom:3px;}
+.msg-meta{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px;}
+.msg-tag{padding:1px 6px;border:1px solid var(--border);border-radius:2px;font-size:8px;}
+
+/* Quick prompts */
+.quick-prompts{padding:8px 14px;border-top:1px solid var(--border);display:flex;gap:6px;overflow-x:auto;flex-shrink:0;}
+.quick-prompts::-webkit-scrollbar{height:0;}
+.qp-btn{flex-shrink:0;padding:4px 10px;border:1px solid var(--border);border-radius:2px;font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);cursor:pointer;background:transparent;transition:all .15s;white-space:nowrap;}
+.qp-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.06);}
+
+/* Chat input */
+.chat-input-row{padding:10px 14px;display:flex;gap:8px;border-top:1px solid var(--border);flex-shrink:0;}
+.chat-input{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 13px;font-family:'Syne',sans-serif;font-size:12px;border-radius:2px;outline:none;transition:border-color .2s;}
+.chat-input:focus{border-color:var(--accent);}
+.chat-input::placeholder{color:var(--muted);}
+.send-btn{padding:9px 14px;background:var(--accent);color:var(--bg);border:none;cursor:pointer;border-radius:2px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;transition:background .2s;letter-spacing:.5px;}
+.send-btn:hover{background:#33eeff;}
+.send-btn:disabled{background:var(--muted);cursor:not-allowed;}
+.disclaimer{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);padding:10px 26px;border-top:1px solid var(--border);background:var(--surface);letter-spacing:.5px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">AL</div>
+    <div>
+      <div class="logo-text">Alpha<span>Lens</span></div>
+      <div class="logo-sub">EXPLAINABLE MARKET INTELLIGENCE · ET GENAI HACKATHON</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="src-badge" id="srcBadge">CONNECTING...</div>
+    <div class="live-badge"><div class="live-dot"></div>NSE / BSE</div>
+    <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)" id="clock"></div>
+  </div>
+</header>
+
+<div class="ticker-bar">
+  <div class="ticker-label">STOCK</div>
+  <div class="ticker-chips" id="tickerChips"></div>
+  <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()">▶ ANALYZE</button>
+</div>
+
+<main>
+  <!-- ── LEFT PANEL ── -->
+  <div class="left-panel">
+    <!-- Chart -->
+    <div class="chart-area">
+      <div class="section-label">01 &nbsp; DATA INTELLIGENCE LAYER</div>
+      <div class="stock-header">
+        <div>
+          <div class="stock-name" id="stockName">Select a stock</div>
+          <div class="stock-sector" id="stockSector">NSE LISTED</div>
+        </div>
+        <div class="stock-price">
+          <div class="price-val" id="priceVal">—</div>
+          <div class="price-chg" id="priceChg">—</div>
+        </div>
+      </div>
+      <div class="chart-container"><canvas id="priceChart"></canvas></div>
+      <div class="volume-container"><canvas id="volumeChart"></canvas></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-item"><div class="stat-k">RSI (14)</div><div class="stat-v" id="statRsi">—</div></div>
+      <div class="stat-item"><div class="stat-k">EMA 20</div><div class="stat-v" id="statEma">—</div></div>
+      <div class="stat-item"><div class="stat-k">5D CHANGE</div><div class="stat-v" id="stat5d">—</div></div>
+      <div class="stat-item"><div class="stat-k">SIGNAL</div><div class="stat-v accent" id="statSignal" style="font-size:10px">—</div></div>
+    </div>
+
+    <!-- Opportunity Radar -->
+    <div class="radar-area">
+      <div class="section-label">02 &nbsp; OPPORTUNITY RADAR</div>
+      <div class="opp-grid" id="oppGrid">
+        <div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;">Click ANALYZE to scan all stocks</div>
+      </div>
+    </div>
+
+    <!-- News -->
+    <div class="news-strip" id="newsStrip">
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);align-self:center;">Loading market news...</div>
+    </div>
+
+    <div class="disclaimer">⚠ For educational purposes only · Not SEBI-registered financial advice · Consult a qualified advisor before investing</div>
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="right-panel">
+
+    <!-- Explainability Panel -->
+    <div class="explain-panel" id="explainPanel">
+      <div class="section-label">03 &nbsp; EXPLAINABILITY PANEL</div>
+      <div id="explainContent">
+        <div style="text-align:center;padding:50px 0 40px;color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;line-height:2.8;">
+          ◈ SELECT A STOCK<br>▶ CLICK ANALYZE<br><span style="font-size:9px;opacity:.6">AI INSIGHTS WILL APPEAR HERE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Panel -->
+    <div class="chat-panel">
+      <div class="chat-header">
+        <div class="chat-header-title">04 &nbsp; AI MARKET CHATBOT</div>
+        <div class="chat-status"><div class="chat-status-dot"></div><span id="chatStatusText">READY</span></div>
+      </div>
+      <div class="chat-ctx-bar" id="chatCtxBar">⬡ CONTEXT: <span id="chatCtxTicker">—</span></div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="msg msg-ai">
+          <div class="msg-label">ALPHALENS AI</div>
+          <div class="bubble">Hi! I'm AlphaLens — your explainable market intelligence assistant for NSE/BSE.
+
+I can analyze any stock, explain signals, discuss RSI &amp; EMA patterns, estimate risk-reward, and answer any market question.
+
+Select a stock above and click <strong>Analyze</strong> — then ask me anything about it.</div>
+        </div>
+      </div>
+      <div class="quick-prompts" id="quickPrompts">
+        <button class="qp-btn" onclick="askQuick('Should I buy this stock now?')">Should I buy?</button>
+        <button class="qp-btn" onclick="askQuick('What is the risk level?')">Risk level?</button>
+        <button class="qp-btn" onclick="askQuick('Explain RSI for this stock')">Explain RSI</button>
+        <button class="qp-btn" onclick="askQuick('What does volume tell us?')">Volume insight</button>
+        <button class="qp-btn" onclick="askQuick('What is the price target?')">Price target?</button>
+        <button class="qp-btn" onclick="askQuick('Is this a good time to exit?')">Exit now?</button>
+        <button class="qp-btn" onclick="askQuick('Compare this stock to Nifty 50 trend')">vs Nifty 50</button>
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chatInput" placeholder="Ask anything about markets or this stock..." onkeydown="if(event.key==='Enter'&&!event.shiftKey)sendChat()"/>
+        <button class="send-btn" id="sendBtn" onclick="sendChat()">SEND</button>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+// ── SAFE JSON FETCH ───────────────────────────────────────────────────────────
+// Fixes: "Unexpected token '<'" SyntaxError
+// When Flask crashes it returns an HTML error page.
+// res.json() then blows up on "<!DOCTYPE".
+// safeJson() checks Content-Type first and surfaces a readable error.
+async function safeJson(res) {
+  const ct = res.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    const text = await res.text();
+    throw new Error(
+      `Server returned HTML instead of JSON (HTTP ${res.status}).\n` +
+      `Check Flask terminal for the Python traceback.\n\n` +
+      `First 300 chars:\n${text.slice(0, 300)}`
+    );
+  }
+  const data = await res.json();
+  return data;  // let callers decide if data.error matters
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let activeTicker   = 'RELIANCE';
+let activeSignalData = null;   // live signal data from last analysis
+let priceChart     = null;
+let volumeChart    = null;
+let chatLocked     = false;
+
+const stocks = ['RELIANCE','TCS','INFY','HDFCBANK','WIPRO','TATAMOTORS','SBIN','ADANIENT','BAJFINANCE','ICICIBANK'];
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour12:false});
+  document.getElementById('clock').textContent = now + ' IST';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── TICKER CHIPS ──────────────────────────────────────────────────────────────
+function initChips() {
+  const wrap = document.getElementById('tickerChips');
+  stocks.forEach(s => {
+    const c = document.createElement('button');
+    c.className = 'chip' + (s === activeTicker ? ' active' : '');
+    c.textContent = s;
+    c.onclick = () => {
+      activeTicker = s;
+      document.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+      loadStockData();
+  getAIEngine();
+      updateChatContext();
+    };
+    wrap.appendChild(c);
+  });
+}
+
+// ── LOAD STOCK DATA ───────────────────────────────────────────────────────────
+async function loadStockData() {
+  document.getElementById('stockName').textContent = activeTicker;
+  document.getElementById('priceVal').textContent  = '...';
+  try {
+    const res  = await fetch(`/api/stock?ticker=${activeTicker}`);
+    const data = await safeJson(res);
+    if (data.error) return;
+    document.getElementById('stockName').textContent = activeTicker;
+    document.getElementById('stockSector').textContent = data.sector || 'NSE LISTED';
+    document.getElementById('priceVal').textContent = `₹${data.current_price}`;
+    const chg = data.price_change_5d || 0;
+    const chgEl = document.getElementById('priceChg');
+    chgEl.textContent  = `${chg >= 0 ? '+' : ''}${chg}% (5D)`;
+    chgEl.className    = 'price-chg ' + (chg >= 0 ? 'up' : 'down');
+    updateSrcBadge(data.data_source);
+    renderCharts(data);
+    loadNews();
+  } catch(e) { console.error(e); }
+}
+
+// ── CHARTS ────────────────────────────────────────────────────────────────────
+function renderCharts(data) {
+  const closes  = data.closes  || [];
+  const volumes = data.volumes || [];
+  const dates   = (data.dates  || []).map(d => d.slice(5));
+  const chg     = data.price_change_5d || 0;
+  const color   = chg >= 0 ? '#00ff88' : '#ff4444';
+
+  const ctx1 = document.getElementById('priceChart').getContext('2d');
+  if (priceChart) priceChart.destroy();
+  const grad = ctx1.createLinearGradient(0, 0, 0, 210);
+  grad.addColorStop(0, color + '33'); grad.addColorStop(1, color + '00');
+  priceChart = new Chart(ctx1, {
+    type: 'line',
+    data: { labels: dates, datasets: [{ data: closes, borderColor: color, backgroundColor: grad, borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.3 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: {
+      x: { ticks: { color: '#4a6a80', font: { size: 9 }, maxTicksLimit: 10 }, grid: { color: '#1a2d3d' } },
+      y: { ticks: { color: '#4a6a80', font: { size: 9 }, callback: v => '₹' + v.toFixed(0) }, grid: { color: '#1a2d3d' } }
+    }}
+  });
+
+  const ctx2 = document.getElementById('volumeChart').getContext('2d');
+  if (volumeChart) volumeChart.destroy();
+  const avgV = volumes.length ? volumes.reduce((a,b)=>a+b,0)/volumes.length : 1;
+  volumeChart = new Chart(ctx2, {
+    type: 'bar',
+    data: { labels: dates, datasets: [{ data: volumes, backgroundColor: volumes.map(v => v > avgV * 1.5 ? '#00e5ff88' : '#1a2d3d'), borderRadius: 1 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: {
+      x: { display: false },
+      y: { ticks: { color: '#4a6a80', font: { size: 8 }, callback: v => v >= 1e7 ? (v/1e7).toFixed(1)+'Cr' : (v/1e5).toFixed(0)+'L' }, grid: { color: '#1a2d3d' } }
+    }}
+  });
+}
+
+// ── DATA SOURCE BADGE ─────────────────────────────────────────────────────────
+function updateSrcBadge(src) {
+  const el = document.getElementById('srcBadge');
+  if (src === 'live') { el.textContent = '⬡ LIVE DATA'; el.className = 'src-badge live'; }
+  else if (src === 'simulated') { el.textContent = '◈ SIMULATED'; el.className = 'src-badge sim'; }
+  else { el.textContent = 'DATA'; el.className = 'src-badge'; }
+}
+
+// ── FULL ANALYSIS ─────────────────────────────────────────────────────────────
+async function runAnalysis() {
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true; btn.textContent = '⟳ SCANNING...';
+
+  // Show skeleton in explain panel immediately
+  showExplainSkeleton();
+
+  try {
+    const res  = await fetch(`/api/signals?ticker=${activeTicker}`);
+    const data = await safeJson(res);
+    if (data.error) { showExplainError(data.error); return; }
+
+    const sig = data.signal_data;
+    const exp = data.explanation;
+    activeSignalData = sig;
+
+    // Update stats bar
+    const rsi = sig.rsi;
+    const rsiEl = document.getElementById('statRsi');
+    rsiEl.textContent = rsi;
+    rsiEl.className   = 'stat-v ' + (rsi < 35 ? 'up-color' : rsi > 68 ? 'down-color' : '');
+
+    document.getElementById('statEma').textContent = `₹${sig.ema20}`;
+
+    const d5 = sig.price_change_5d;
+    const d5El = document.getElementById('stat5d');
+    d5El.textContent = `${d5 >= 0 ? '+' : ''}${d5}%`;
+    d5El.className   = 'stat-v ' + (d5 >= 0 ? 'up-color' : 'down-color');
+
+    document.getElementById('statSignal').textContent = sig.primary_signal.replace(/_/g,' ');
+    updateSrcBadge(sig.data_source);
+
+    // Render explainability
+    renderExplainability(sig, exp);
+    updateChatContext(sig);
+
+    // Opportunity Radar
+    const allRes  = await fetch('/api/signals/all');
+    const allData = await safeJson(allRes);
+    renderOpportunityRadar(allData.opportunities);
+
+    // Auto-inject analysis summary into chat
+    injectAnalysisMessage(sig, exp);
+
+  } catch(e) {
+    console.error(e);
+    showExplainError(e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '▶ ANALYZE';
+  }
+}
+
+// ── ERROR STATE IN EXPLAIN PANEL ─────────────────────────────────────────────
+function showExplainError(msg) {
+  document.getElementById('explainContent').innerHTML = `
+    <div style="padding:20px;border:1px solid var(--danger);border-radius:4px;background:rgba(255,68,68,.06)">
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--danger);letter-spacing:2px;margin-bottom:10px">⚠ ANALYSIS ERROR</div>
+      <div style="font-size:12px;line-height:1.6;white-space:pre-wrap;color:var(--text)">${msg}</div>
+      <div style="margin-top:14px;font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">
+        COMMON FIXES:<br>
+        1. Check Flask terminal — look for Python traceback<br>
+        2. Ensure venv is active: <span style="color:var(--accent)">venv\\Scripts\\activate</span><br>
+        3. Ensure Flask is running: <span style="color:var(--accent)">python app.py</span><br>
+        4. Open <a href="/api/health" target="_blank" style="color:var(--accent)">/api/health</a> to check services
+      </div>
+    </div>
+  `;
+}
+
+// ── SKELETON LOADER ───────────────────────────────────────────────────────────
+function showExplainSkeleton() {
+  document.getElementById('explainContent').innerHTML = `
+    <div style="animation:skFade 1.2s ease infinite alternate">
+      <div style="height:24px;background:var(--surface2);border-radius:3px;margin-bottom:14px;width:60%"></div>
+      <div style="height:80px;background:var(--surface2);border-radius:3px;margin-bottom:10px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">
+        <div style="height:54px;background:var(--surface2);border-radius:3px"></div>
+        <div style="height:54px;background:var(--surface2);border-radius:3px"></div>
+        <div style="height:54px;background:var(--surface2);border-radius:3px"></div>
+      </div>
+      <div style="height:90px;background:var(--surface2);border-radius:3px;margin-bottom:10px"></div>
+      <div style="height:110px;background:var(--surface2);border-radius:3px"></div>
+    </div>
+    <style>@keyframes skFade{from{opacity:.4}to{opacity:.8}}</style>
+  `;
+}
+
+// ── DYNAMIC EXPLAINABILITY RENDER ─────────────────────────────────────────────
+function renderExplainability(sig, exp) {
+  const conf      = exp.confidence_score;
+  const primary   = exp.primary_signal;
+  const isBull    = ['BREAKOUT','EMA_BULLISH_CROSS','RSI_OVERSOLD','VOLUME_SPIKE','UPTREND','VOLUME_ELEVATED'].includes(primary);
+  const isBear    = ['EMA_BEARISH_CROSS','RSI_OVERBOUGHT','DOWNTREND','BREAKDOWN'].includes(primary);
+  const confColor = conf >= 70 ? 'var(--accent2)' : conf >= 50 ? 'var(--accent)' : 'var(--warn)';
+  const retColor  = exp.avg_return >= 0 ? 'var(--accent2)' : 'var(--danger)';
+
+  // ── Signal pills for all detected signals
+  const allSignalPills = (exp.all_signals || []).map(s => {
+    const b = ['BREAKOUT','EMA_BULLISH_CROSS','RSI_OVERSOLD','VOLUME_SPIKE','UPTREND','VOLUME_ELEVATED'].includes(s.type);
+    const br = ['EMA_BEARISH_CROSS','RSI_OVERBOUGHT','DOWNTREND','BREAKDOWN'].includes(s.type);
+    const cls = b ? 'bull' : br ? 'bear' : 'neutral';
+    return `<span class="sig-pill ${cls}" title="${s.detail}">${sigEmoji(s.type)} ${s.type.replace(/_/g,' ')}</span>`;
+  }).join('') || '<span style="color:var(--muted);font-size:11px">No strong signals detected</span>';
+
+  // ── Indicator dots (color coded)
+  const indicators = (exp.supporting_indicators || []).map(ind => {
+    const isWarn  = ind.includes('⚠') || ind.includes('simulated');
+    const isDanger = ind.includes('overbought') || ind.includes('below') || ind.includes('weak');
+    const dotCls  = isWarn ? 'warn' : isDanger ? 'danger' : '';
+    return `<li><div class="ind-dot ${dotCls}"></div><span>${ind}</span></li>`;
+  }).join('');
+
+  // ── RSI visual gauge
+  const rsi = sig.rsi;
+  const rsiPos   = Math.min(100, Math.max(0, rsi));
+  const rsiColor = rsi < 35 ? 'var(--accent2)' : rsi > 68 ? 'var(--danger)' : 'var(--accent)';
+  const rsiLabel = rsi < 35 ? 'OVERSOLD' : rsi > 68 ? 'OVERBOUGHT' : 'NEUTRAL';
+
+  // ── ATR volatility bar
+  const atr = sig.atr || 0;
+  const maxAtr = 200;
+  const atrPct = Math.min(100, (atr / maxAtr) * 100);
+
+  // ── Volume ratio bar
+  const volRatio = sig.vol_ratio || 1;
+  const volPct   = Math.min(100, (volRatio / 3) * 100);
+  const volColor = volRatio > 1.8 ? 'var(--accent)' : volRatio > 1.3 ? 'var(--warn)' : 'var(--muted)';
+
+  // ── EMA alignment text
+  const ema20 = sig.ema20;
+  const ema50 = sig.ema50;
+  const emaAlign = ema20 > ema50
+    ? `<span style="color:var(--accent2)">▲ BULLISH</span> EMA20 > EMA50`
+    : `<span style="color:var(--danger)">▼ BEARISH</span> EMA20 < EMA50`;
+
+  // ── Data source tag
+  const srcTag = sig.data_source === 'live'
+    ? `<span style="color:var(--accent2);font-size:9px">⬡ LIVE DATA</span>`
+    : `<span style="color:var(--warn);font-size:9px">◈ SIMULATED DATA</span>`;
+
+  document.getElementById('explainContent').innerHTML = `
+
+    <!-- Signal badge -->
+    <div class="signal-badge">${sigEmoji(primary)} ${primary.replace(/_/g,' ')}</div>
+    ${srcTag}
+
+    <!-- Confidence -->
+    <div class="conf-dial">
+      <div class="conf-num" style="color:${confColor}">${conf}<span style="font-size:18px">%</span></div>
+      <div class="conf-label" style="color:${confColor}">${exp.confidence_label} CONFIDENCE</div>
+      <div class="conf-bar-wrap"><div class="conf-bar-fill" style="width:${conf}%;background:${confColor}"></div></div>
+    </div>
+
+    <!-- Historical stats -->
+    <div class="hist-stats">
+      <div class="hist-stat">
+        <div class="hist-stat-v" style="color:${confColor}">${exp.historical_hit_rate}%</div>
+        <div class="hist-stat-k">HIT RATE</div>
+      </div>
+      <div class="hist-stat">
+        <div class="hist-stat-v" style="color:${retColor}">${exp.avg_return >= 0 ? '+' : ''}${exp.avg_return}%</div>
+        <div class="hist-stat-k">AVG RETURN</div>
+      </div>
+      <div class="hist-stat">
+        <div class="hist-stat-v" style="color:var(--muted);font-size:11px">${exp.timeframe}</div>
+        <div class="hist-stat-k">TIMEFRAME</div>
+      </div>
+    </div>
+
+    <!-- Live technical gauges -->
+    <div class="explain-block" style="margin-top:10px">
+      <div class="explain-block-title">LIVE TECHNICAL GAUGES</div>
+
+      <!-- RSI gauge -->
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:10px;margin-bottom:4px">
+          <span>RSI (14)</span>
+          <span style="color:${rsiColor}">${rsi} · ${rsiLabel}</span>
+        </div>
+        <div style="height:5px;background:linear-gradient(90deg,var(--accent2) 0%,var(--accent2) 35%,var(--warn) 35%,var(--warn) 68%,var(--danger) 68%,var(--danger) 100%);border-radius:3px;position:relative;">
+          <div style="position:absolute;top:-3px;left:${rsiPos}%;transform:translateX(-50%);width:3px;height:11px;background:var(--text);border-radius:2px;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-top:3px"><span>0 OVERSOLD</span><span>50</span><span>OVERBOUGHT 100</span></div>
+      </div>
+
+      <!-- EMA alignment -->
+      <div style="font-family:'Space Mono',monospace;font-size:10px;margin-bottom:8px">
+        <span style="color:var(--muted)">EMA ALIGN ·</span> ${emaAlign}
+        <div style="font-size:9px;color:var(--muted);margin-top:2px">EMA20 ₹${ema20} &nbsp;·&nbsp; EMA50 ₹${ema50}</div>
+      </div>
+
+      <!-- Volume bar -->
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:10px;margin-bottom:4px">
+          <span>VOLUME RATIO</span>
+          <span style="color:${volColor}">${volRatio}x avg</span>
+        </div>
+        <div class="conf-bar-wrap"><div style="height:100%;border-radius:3px;width:${volPct}%;background:${volColor};transition:width 1s ease"></div></div>
+      </div>
+
+      <!-- ATR bar -->
+      <div>
+        <div style="display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:10px;margin-bottom:4px">
+          <span>ATR (VOLATILITY)</span>
+          <span style="color:var(--warn)">₹${atr} ${atr > 50 ? '· HIGH' : '· NORMAL'}</span>
+        </div>
+        <div class="atr-bar-wrap"><div class="atr-bar-fill" style="width:${atrPct}%"></div></div>
+      </div>
+    </div>
+
+    <!-- All detected signals -->
+    <div class="explain-block">
+      <div class="explain-block-title">DETECTED SIGNALS</div>
+      <div style="margin-bottom:8px">${allSignalPills}</div>
+      ${(exp.all_signals || []).map(s => `
+        <div style="font-size:11px;padding:4px 0;border-bottom:1px solid rgba(26,45,61,.5);font-family:'Space Mono',monospace;color:var(--muted)">
+          ▸ ${s.type.replace(/_/g,' ')}: <span style="color:var(--text)">${s.detail}</span>
+        </div>`).join('') || '<div style="color:var(--muted);font-size:11px;font-family:Space Mono,monospace">No strong signals — neutral zone</div>'}
+    </div>
+
+    <!-- Why this signal matters -->
+    <div class="explain-block">
+      <div class="explain-block-title">WHY THIS SIGNAL MATTERS</div>
+      ${exp.signal_explanation}
+      <div style="margin-top:8px;font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);padding-top:6px;border-top:1px solid var(--border)">${exp.why_it_matters}</div>
+    </div>
+
+    <!-- Supporting indicators -->
+    <div class="explain-block">
+      <div class="explain-block-title">SUPPORTING INDICATORS</div>
+      <ul class="indicator-list">${indicators}</ul>
+    </div>
+
+    <!-- AI Reasoning -->
+    <div class="llm-block">
+      <div class="explain-block-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>AI REASONING · MISTRAL-7B</span>
+        <span style="font-size:8px;color:${exp.llm_insight.includes('Rule-based') ? 'var(--warn)' : 'var(--accent2)'}">
+          ${exp.llm_insight.includes('Rule-based') ? '◈ RULE-BASED' : '⬡ LLM'}
+        </span>
+      </div>
+      <div style="font-size:12px;line-height:1.8;white-space:pre-wrap;color:var(--text)">${exp.llm_insight.replace('[Rule-based analysis — add HF_TOKEN to .env for Mistral-7B AI insights]','').trim()}</div>
+      ${exp.llm_insight.includes('Rule-based') ? `
+      <div style="margin-top:8px;font-family:'Space Mono',monospace;font-size:9px;color:var(--warn);padding:5px 8px;border:1px solid rgba(255,179,0,.2);border-radius:3px;background:rgba(255,179,0,.05)">
+        ◈ Rule-based analysis active — add HF_TOKEN to .env for Mistral-7B insights
+      </div>` : ''}
+    </div>
+
+    <!-- Disclaimer -->
+    <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);padding:7px;border:1px solid var(--border);border-radius:3px;line-height:1.5">
+      ${exp.disclaimer}
+    </div>
+  `;
+}
+
+// ── INJECT ANALYSIS INTO CHAT ─────────────────────────────────────────────────
+function injectAnalysisMessage(sig, exp) {
+  const direction = exp.avg_return >= 0 ? '📈' : '📉';
+  const srcNote   = sig.data_source === 'simulated' ? ' (simulated data)' : ' (live data)';
+  const summary   = `Analysis complete for ${sig.ticker}${srcNote}
+
+Signal: ${sig.primary_signal.replace(/_/g,' ')} · Confidence: ${sig.confidence}%
+Price: ₹${sig.current_price} · RSI: ${sig.rsi} · 5D: ${sig.price_change_5d >= 0 ? '+' : ''}${sig.price_change_5d}%
+Historical hit rate: ${exp.historical_hit_rate}% · Avg return: ${exp.avg_return >= 0 ? '+' : ''}${exp.avg_return}% over ${exp.timeframe}
+
+${direction} ${exp.llm_insight}
+
+Ask me anything about this stock ↓`;
+
+  addMsg('ai', summary, { tag: 'ANALYSIS', ticker: sig.ticker });
+  updateQuickPrompts(sig);
+}
+
+// ── DYNAMIC QUICK PROMPTS based on signal ─────────────────────────────────────
+function updateQuickPrompts(sig) {
+  const primary = sig.primary_signal;
+  const isBull  = ['BREAKOUT','EMA_BULLISH_CROSS','RSI_OVERSOLD','UPTREND'].includes(primary);
+  const isBear  = ['EMA_BEARISH_CROSS','DOWNTREND','BREAKDOWN'].includes(primary);
+
+  const ticker = sig.ticker;
+  let prompts = [];
+
+  if (isBull) {
+    prompts = [
+      `Should I enter ${ticker} now or wait?`,
+      `What's the stop-loss for ${ticker}?`,
+      `What's the upside target for ${ticker}?`,
+      `Is the ${ticker} breakout real or a trap?`,
+      `What confirms this ${primary.replace(/_/g,' ')} signal?`,
+    ];
+  } else if (isBear) {
+    prompts = [
+      `Should I exit ${ticker} now?`,
+      `Where will ${ticker} find support?`,
+      `Is ${ticker} a buy-the-dip opportunity?`,
+      `What RSI level is safe to re-enter ${ticker}?`,
+      `How long will this ${ticker} downtrend last?`,
+    ];
+  } else {
+    prompts = [
+      `What's the next move for ${ticker}?`,
+      `Is ${ticker} consolidating before a breakout?`,
+      `Compare ${ticker} RSI to sector average`,
+      `What volume would confirm a ${ticker} signal?`,
+      `Set a price alert strategy for ${ticker}`,
+    ];
+  }
+
+  const wrap = document.getElementById('quickPrompts');
+  wrap.innerHTML = prompts.map(p =>
+    `<button class="qp-btn" onclick="askQuick('${p.replace(/'/g,"\\'")}')">
+      ${p.length > 32 ? p.slice(0, 32) + '…' : p}
+    </button>`
+  ).join('');
+}
+
+// ── OPPORTUNITY RADAR ─────────────────────────────────────────────────────────
+function renderOpportunityRadar(opps) {
+  const grid = document.getElementById('oppGrid');
+  if (!opps || !opps.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;color:var(--muted);font-size:12px;font-family:Space Mono,monospace;padding:12px">No data available</div>';
+    return;
+  }
+  const confColor = c => c >= 70 ? '#00ff88' : c >= 50 ? '#00e5ff' : '#ffb300';
+
+  grid.innerHTML = opps.map(o => `
+    <div class="opp-card" style="--c:${confColor(o.confidence)}"
+      onclick="activeTicker='${o.ticker}';document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active',c.textContent==='${o.ticker}'));loadStockData()"
+      title="${o.primary_signal}: ${o.vol_ratio}x volume · RSI ${o.rsi}">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:${confColor(o.confidence)};transform-origin:left;transform:scaleX(1)"></div>
+      <div class="opp-ticker">${o.ticker}</div>
+      <div class="opp-signal" style="color:${confColor(o.confidence)}">${sigEmoji(o.primary_signal)} ${o.primary_signal.replace(/_/g,' ')}</div>
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:${o.price_change_5d >= 0 ? 'var(--accent2)' : 'var(--danger)'}">₹${o.current_price} &nbsp;${o.price_change_5d >= 0 ? '+' : ''}${o.price_change_5d}%</div>
+      <div class="opp-conf-bar"><div class="opp-conf-fill" style="width:${o.confidence}%;background:${confColor(o.confidence)}"></div></div>
+      <div class="opp-meta"><span>RSI ${o.rsi} · ${o.vol_ratio}x vol</span><span style="color:${confColor(o.confidence)}">${o.confidence}%</span></div>
+    </div>`).join('');
+}
+
+// ── NEWS ──────────────────────────────────────────────────────────────────────
+async function loadNews() {
+  try {
+    const res  = await fetch(`/api/news?ticker=${activeTicker}`);
+    const data = await safeJson(res);
+    document.getElementById('newsStrip').innerHTML = (data.news || []).map(n => `
+      <div class="news-item" onclick="askQuick('What is the market impact of: ${n.title.replace(/'/g,"\\'")}')">
+        <div class="news-title">${n.title}</div>
+        <div class="news-src">${n.source}</div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+// ── CHAT CONTEXT ──────────────────────────────────────────────────────────────
+function updateChatContext(sig) {
+  const bar    = document.getElementById('chatCtxBar');
+  const ticker = document.getElementById('chatCtxTicker');
+  if (sig) {
+    ticker.textContent = `${sig.ticker} · ₹${sig.current_price} · ${sig.primary_signal.replace(/_/g,' ')} · ${sig.confidence}% conf`;
+    bar.classList.add('visible');
+  } else {
+    ticker.textContent = activeTicker;
+    bar.classList.add('visible');
+  }
+}
+
+// ── QUICK PROMPT ──────────────────────────────────────────────────────────────
+function askQuick(q) {
+  document.getElementById('chatInput').value = q;
+  sendChat();
+}
+
+// ── CHAT SEND ─────────────────────────────────────────────────────────────────
+async function getAIEngine() {
+  try {
+    const r = await fetch('/api/health');
+    const d = await r.json();
+    const hfOk = d.services && d.services.huggingface && d.services.huggingface.includes('configured');
+    const badge = document.getElementById('aiEngineBadge');
+    if (badge) {
+      badge.textContent = hfOk ? 'MISTRAL-7B' : 'RULE-BASED';
+      badge.style.color = hfOk ? 'var(--accent2)' : 'var(--muted)';
+    }
+  } catch(e) {}
+}
+
+async function sendChat() {
+  if (chatLocked) return;
+  const input = document.getElementById('chatInput');
+  const q     = input.value.trim();
+  if (!q) return;
+
+  input.value = '';
+  chatLocked  = true;
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('chatStatusText').textContent = 'THINKING...';
+
+  addMsg('user', q);
+  const loadingEl = addMsg('ai', '◈ Analyzing...', { thinking: true });
+
+  try {
+    const body = {
+      question: q,
+      ticker:   activeTicker,
+    };
+
+    const res  = await fetch('/api/chat', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    });
+    const data = await safeJson(res);
+
+    const bubble = loadingEl.querySelector('.bubble');
+    bubble.classList.remove('thinking');
+    const cleanResponse = (data.response || 'No response generated.')
+      .replace(/\[Rule-based analysis[^\]]*\]/g, '')
+      .replace(/\[Note:[^\]]*\]/g, '')
+      .trim();
+    bubble.textContent = cleanResponse;
+
+    // Update explainability panel if fresh signal data came back
+    if (data.explanation && data.signal_data) {
+      activeSignalData = data.signal_data;
+      renderExplainability(data.signal_data, data.explanation);
+      updateSrcBadge(data.signal_data.data_source);
+    }
+
+    // Update context bar
+    if (data.signal_data) updateChatContext(data.signal_data);
+
+  } catch(e) {
+    console.error('[sendChat]', e);
+    const bubble = loadingEl.querySelector('.bubble');
+    bubble.classList.remove('thinking');
+    // Show the actual error — not a generic message — so it's debuggable
+    if (e.message.includes('HTML instead of JSON')) {
+      bubble.textContent = '⚠ Flask returned an error page instead of JSON.\nCheck the Flask terminal window for the Python traceback.\n\nOpen /api/health in your browser to see which services are active.';
+    } else if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+      bubble.textContent = '⚠ Cannot reach Flask server.\nMake sure python app.py is running on port 5000.';
+    } else {
+      bubble.textContent = `⚠ ${e.message}`;
+    }
+  } finally {
+    chatLocked = false;
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('chatStatusText').textContent = 'READY';
+    document.getElementById('chatMessages').scrollTop = 99999;
+  }
+}
+
+// ── ADD MESSAGE ───────────────────────────────────────────────────────────────
+function addMsg(role, text, opts = {}) {
+  const wrap = document.getElementById('chatMessages');
+  const div  = document.createElement('div');
+  div.className = `msg msg-${role === 'user' ? 'user' : 'ai'}`;
+
+  const label   = role === 'user' ? 'YOU' : 'ALPHALENS AI';
+  const tag     = opts.tag    ? `<span class="msg-tag">${opts.tag}</span>` : '';
+  const ticker  = opts.ticker ? `<span class="msg-tag" style="color:var(--accent);border-color:rgba(0,229,255,.3)">${opts.ticker}</span>` : '';
+  const metaBar = (tag || ticker) ? `<div class="msg-meta">${tag}${ticker}</div>` : '';
+
+  div.innerHTML = `
+    <div class="msg-label">${label}</div>
+    <div class="bubble${opts.thinking ? ' thinking' : ''}">${text}</div>
+    ${metaBar}
+  `;
+  wrap.appendChild(div);
+  wrap.scrollTop = 99999;
+  return div;
+}
+
+// ── SIGNAL EMOJI ──────────────────────────────────────────────────────────────
+function sigEmoji(s) {
+  return ({
+    BREAKOUT:'🚀', EMA_BULLISH_CROSS:'📈', RSI_OVERSOLD:'⚡',
+    VOLUME_SPIKE:'🔊', VOLUME_ELEVATED:'📊', UPTREND:'▲',
+    NEUTRAL:'◈', DOWNTREND:'▼', RSI_OVERBOUGHT:'⚠',
+    EMA_BEARISH_CROSS:'📉', BREAKDOWN:'🔻',
+  })[s] || '◈';
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+initChips();
+loadStockData();
+loadNews();
+updateChatContext();
+</script>
+</body>
+</html>
