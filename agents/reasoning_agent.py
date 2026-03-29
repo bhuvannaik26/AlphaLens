@@ -1,22 +1,6 @@
 """
 AlphaLens — Reasoning Agent v7 (FINAL FIX)
 ============================================
-
-BUGS FIXED vs v5/v6:
-  BUG 1 — query_llm(prompt, signal_data) was missing `question` param
-           → fallback always ran default summary regardless of what was asked
-           FIX: query_llm(prompt, signal_data, question="")
-
-  BUG 2 — _rule_based_fallback appended a hardcoded note string to EVERY
-           response, even when HF_TOKEN was set and LLM was working
-           FIX: note removed from fallback; UI shows LLM badge when HF responds
-
-  BUG 3 — HF response was silently discarded when text < 50 chars or had
-           no SUMMARY/RECOMMENDATION keywords → fell through to fallback
-           FIX: accept any non-empty text from HF (removed strict validation)
-
-  BUG 4 — _rule_based_fallback never received the question
-           FIX: question flows: app.py → query_llm → _rule_based_fallback
 """
 
 import os

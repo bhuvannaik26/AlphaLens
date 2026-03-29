@@ -1,22 +1,6 @@
 """
 AlphaLens — Data Provider v3 (FIXED)
 =====================================
-Priority chain — stops at first success:
-  1. Finnhub       — 60 req/min free, covers NSE India  ✅ BEST FOR DEMO
-  2. Alpha Vantage — 25 req/day free, covers NSE India  ✅ BACKUP
-  3. Simulation    — realistic OHLCV, always works      ✅ NEVER CRASHES UI
-
-Setup:
-  In your .env file add:
-    FINNHUB_TOKEN=your_token_here        # free at finnhub.io
-    ALPHA_VANTAGE_KEY=your_key_here      # free at alphavantage.co
-
-How to get keys (both free, no credit card):
-  Finnhub      → https://finnhub.io/register
-  Alpha Vantage → https://www.alphavantage.co/support/#api-key
-
-Install: pip install requests pandas numpy python-dotenv
-(No yfinance needed!)
 """
 
 import os

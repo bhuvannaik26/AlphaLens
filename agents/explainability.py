@@ -1,20 +1,6 @@
 """
 AlphaLens — Explainability Agent v3  ★ KEY DIFFERENTIATOR ★
 =============================================================
-Provides transparent justification for every recommendation:
-  • Why this signal matters (plain English)
-  • Supporting indicators (RSI, EMA, Volume, ATR)
-  • Confidence score + label (HIGH / MODERATE / LOW)
-  • Historical hit rate + avg return (back-tested NSE data)
-  • Data source badge (live / simulated)
-  • Full disclaimer
-
-Changes from v2:
-  - Added ATR (volatility) to supporting indicators
-  - Added data_source field passed through to frontend
-  - Added VOLUME_ELEVATED and BREAKDOWN signal types
-  - Improved indicator text for better judge readability
-  - Added sample_size context to historical stats
 """
 
 # ── Historical back-test database ─────────────────────────────────────────────

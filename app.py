@@ -1,19 +1,6 @@
 """
 AlphaLens — Flask Server v7 (FINAL FIX)
 =========================================
-
-BUGS FIXED:
-  BUG 1 — _full_pipeline called query_llm(prompt, signal_data)
-           missing question → fallback always ran default summary
-           FIX: query_llm(prompt, signal_data, question)
-
-  BUG 2 — /api/chat called query_llm(prompt, signal_data)
-           missing question → same bug as above
-           FIX: query_llm(prompt, signal_data, question)
-
-  BUG 3 — Global error handlers missing → Flask returned HTML on errors
-           JS called res.json() on HTML → "Unexpected token '<'" SyntaxError
-           FIX: @app.errorhandler for 404/405/500/Exception always returns JSON
 """
 
 import os

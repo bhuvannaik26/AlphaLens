@@ -2,14 +2,6 @@
 AlphaLens — Signal Detection Agent v3
 =======================================
 Detects: Breakout · RSI Oversold/Overbought · EMA Cross · Volume Spike · Trend
-
-Changes from v2:
-  - data_provider.get_stock_data() now ALWAYS returns a DataFrame
-    so all isinstance(hist, dict) guards are removed
-  - Uses _is_simulated flag from DataFrame to tag data_source correctly
-  - _neutral() helper used for all error/empty cases consistently
-  - Cleaner confidence scoring with explicit cap at [20, 95]
-  - All columns accessed via consistent DataFrame API (no more dict key errors)
 """
 
 import numpy as np
